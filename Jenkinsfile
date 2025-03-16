@@ -34,6 +34,29 @@ pipeline {
                 }
             }
         }
+        stage('DeployToDEV') {
+            when {
+                branch 'master'
+            }
+            steps {
+                input 'Deploy to DEV?'
+                milestone(1)
+                withCredentials([usernamePassword(credentialsId: 'dev_server_login', usernameVariable: 'USERNAME', passwordVariable: 'USERPASS')]) {
+                    script {
+                        // Deploy to DEV
+                        echo 'Deploying to DEV environment...'
+                        sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$dev_ip \"docker pull mogeshailu/train-schedule:${env.BUILD_NUMBER}\""
+                        try {
+                            sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$dev_ip \"docker stop train-schedule\""
+                            sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$dev_ip \"docker rm train-schedule\""
+                        } catch (err) {
+                            echo 'caught error: $err'
+                        }
+                        sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$dev_ip \"docker run --restart always --name train-schedule -p 8080:8080 -d mogeshailu/train-schedule:${env.BUILD_NUMBER}\""
+                    }
+                }
+            }
+        }
         stage('DeployToProduction') {
             when {
                 branch 'master'
@@ -41,14 +64,16 @@ pipeline {
             steps {
                 input 'Deploy to Production?'
                 milestone(1)
-                withCredentials([usernamePassword(credentialsId: 'webserver_login', usernameVariable: 'USERNAME', passwordVariable: 'USERPASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'prod_server_login', usernameVariable: 'USERNAME', passwordVariable: 'USERPASS')]) {
                     script {
+                        // Deploy to PROD
+                        echo 'Deploying to PROD environment...'
                         sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$prod_ip \"docker pull mogeshailu/train-schedule:${env.BUILD_NUMBER}\""
                         try {
                             sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$prod_ip \"docker stop train-schedule\""
                             sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$prod_ip \"docker rm train-schedule\""
                         } catch (err) {
-                            echo: 'caught error: $err'
+                            echo 'caught error: $err'
                         }
                         sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$prod_ip \"docker run --restart always --name train-schedule -p 8080:8080 -d mogeshailu/train-schedule:${env.BUILD_NUMBER}\""
                     }
