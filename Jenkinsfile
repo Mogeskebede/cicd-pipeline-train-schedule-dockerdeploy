@@ -63,7 +63,7 @@ pipeline {
             }
             steps {
                 input 'Deploy to Production?'
-                milestone(1)
+                milestone(2)
                 withCredentials([usernamePassword(credentialsId: 'prod_server_login', usernameVariable: 'USERNAME', passwordVariable: 'USERPASS')]) {
                     script {
                         // Deploy to PROD
